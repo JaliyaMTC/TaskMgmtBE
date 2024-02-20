@@ -18,7 +18,7 @@ namespace TaskMgmt.Controllers
 
         [HttpGet]
         [Route("{taskId}")]
-        public List < Comments > GetAllComments(int taskId)
+        public List <Comments> GetAllComments(int taskId)
         {
             return commentsService.GetAllComments(taskId);
         }

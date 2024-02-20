@@ -9,10 +9,11 @@ namespace TaskMgmt.Services
     {
         private readonly TaskMgmtContext taskMgmtContext;
         private readonly TaskDetailsRepository taskDetailsRepository;
-       
+        private readonly CommentsRepository commentsRepository;
         public TaskDetailsService(TaskMgmtContext taskMgmtContext) {
             this.taskMgmtContext = taskMgmtContext;
             taskDetailsRepository = new TaskDetailsRepository(taskMgmtContext);
+            commentsRepository = new CommentsRepository(taskMgmtContext);
          }
 
         public List<TaskDetails> GetTaskDetailsList()
@@ -37,7 +38,44 @@ namespace TaskMgmt.Services
 
         public bool DeleteTask(int taskId)
         {
-            return taskDetailsRepository.DeleteTask(taskId);
+
+            var result = true;
+            using var transaction = taskMgmtContext.Database.BeginTransaction();
+
+            try
+            {
+                var comments = commentsRepository.GetAllComments(taskId);
+
+                if ((null != comments) && (comments.Count() > 0))
+                {
+                    foreach (var comment in comments)
+                    {
+                        if (result)
+                        {
+                            result = commentsRepository.DeleteComment(comment.CommentId);
+                            if (!result) break;
+                        }
+                    }
+                }
+                if (result)
+                {
+                    result = taskDetailsRepository.DeleteTask(taskId);
+                }
+                if (result)
+                {
+                    transaction.Commit();
+                    return true;
+                }
+                else
+                {
+                    transaction.Rollback();
+                }
+            }
+            catch (Exception ex)
+            {
+                transaction.Rollback();
+            }
+            return false;
         }
     }
 }
